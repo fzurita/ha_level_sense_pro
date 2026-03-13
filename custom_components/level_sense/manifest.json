@@ -1,0 +1,11 @@
+{
+  "domain": "level_sense",
+  "name": "Level Sense Pro Local",
+  "codeowners": ["@fzurita"],
+  "config_flow": true,
+  "documentation": "https://github.com/fzurita/ha_level_sense_pro",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/fzurita/ha_level_sense_pro/issues",
+  "version": "1.0.0"
+}
