@@ -1,0 +1,9 @@
+{
+  "domain": "level_sense",
+  "name": "Level Sense Pro",
+  "codeowners": ["@yourusername"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "iot_class": "local_polling",
+  "version": "1.0.0"
+}
