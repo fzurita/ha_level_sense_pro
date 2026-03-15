@@ -46,6 +46,7 @@ class LevelSenseDevice:
         self.hass = hass
         self.entry_id = entry_id
         self.state = {} 
+        self.config_needs_update = False
         
         # Initialize the storage helper
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}_{entry_id}_config")
@@ -96,7 +97,9 @@ class LevelSenseDevice:
                 self.config[key][index] = value
             else:
                 self.config[key] = value
-                
+               
+        self.config_needs_update = True
+
         # Schedule a background task to save the new dictionary to disk
         self.hass.async_create_task(self._store.async_save(self.config))
 
@@ -118,9 +121,8 @@ class LevelSenseDataView(HomeAssistantView):
         except Exception as e:
             # If the JSON fails to parse, log the exact error
             _LOGGER.error("Level Sense JSON parsing failed: %s", e)
-            
-        # THE FIX: Tell the device to fetch /_device/config immediately
-        return self.json({"result": "success", "has_config_update": 1})
+        update_flag = 1 if self.device.config_needs_update else 0
+        return self.json({"result": "success", "has_config_update": update_flag})    
 
 class LevelSenseConfigView(HomeAssistantView):
     url = "/_device/config"
@@ -134,8 +136,7 @@ class LevelSenseConfigView(HomeAssistantView):
         # 1. Pack the JSON tightly with NO spaces, exactly like the original cloud
         payload = json.dumps(self.device.config, separators=(',', ':'))
         
-        _LOGGER.warning("Sending Level Sense Config: %s", payload)
-
+        self.device.config_needs_update = False
         # 2. Force the exact headers the ESP32 firmware is expecting
         return web.Response(
             text=payload,
