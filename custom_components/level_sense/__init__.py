@@ -6,6 +6,7 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.device_registry import async_get as async_get_dev_reg
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.event import async_call_later
 from aiohttp import web
 
 from .const import DOMAIN, DATA_DEVICE, SIGNAL_UPDATE
@@ -13,7 +14,7 @@ from .const import DOMAIN, DATA_DEVICE, SIGNAL_UPDATE
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor", "number", "select", "binary_sensor"]
-STORAGE_VERSION = 1  # <-- NEW: Required for the storage helper
+STORAGE_VERSION = 1
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
@@ -47,6 +48,8 @@ class LevelSenseDevice:
         self.entry_id = entry_id
         self.state = {} 
         self.config_needs_update = False
+        self.is_online = False
+        self._timeout_listener = None
         
         # Initialize the storage helper
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}_{entry_id}_config")
@@ -86,18 +89,44 @@ class LevelSenseDevice:
             _LOGGER.warning("No saved Level Sense config found. Using defaults.")
 
     def update_telemetry(self, data):
-        """THE MISSING FUNCTION: Processes incoming data and updates UI."""
         self.state = data
+        self.is_online = True
+        
+        if self._timeout_listener:
+            self._timeout_listener() 
+
+        interval = int(self.config.get("update_interval", 120)) + 60
+
+        self._timeout_listener = async_call_later(self.hass, interval, self._mark_offline)
+        
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE)
+
+    async def _mark_offline(self, now):
+        _LOGGER.warning("Level Sense missed its check-in! Marking device as offline.")
+        self.is_online = False
         async_dispatcher_send(self.hass, SIGNAL_UPDATE)
 
     def update_config(self, key, index, value):
-        """Processes outgoing config changes and saves to disk."""
+        # Protect against Deep Sleep Comas by clamping the update interval
+        if key == "update_interval":
+            try:
+                val_int = int(float(value))
+                if val_int < 5:
+                    value = "5"
+                elif val_int > 3600: # Max 1 hour sleep
+                    value = "3600"
+                else:
+                    value = str(val_int)
+            except ValueError:
+                value = "120" # Fallback if someone sends garbage data
+
+        # Processes outgoing config changes and saves to disk.
         if key in self.config:
             if index is not None and isinstance(self.config[key], list):
                 self.config[key][index] = value
             else:
                 self.config[key] = value
-               
+
         self.config_needs_update = True
 
         # Schedule a background task to save the new dictionary to disk

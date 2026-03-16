@@ -1,5 +1,6 @@
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.const import EntityCategory
 from .const import DOMAIN, DATA_DEVICE, SIGNAL_UPDATE
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -10,15 +11,15 @@ async def async_setup_entry(hass, entry, async_add_entities):
         LevelSenseInputBinarySensor(device, "Float Switch", "input2", "safety"),
         
         # Internal Device States
-        LevelSenseStateBinarySensor(device, "Siren", "siren_state", "sound"),
-        LevelSenseStateBinarySensor(device, "Relay", "relay_state", None, "mdi:electric-switch"),
-        LevelSenseStateBinarySensor(device, "Device Fault", "device_state", "problem"),
-        LevelSenseStateBinarySensor(device, "Alarm Silenced", "alarm_silence", None, "mdi:bell-off"),
+        LevelSenseStateBinarySensor(device, "Siren", "siren_state", "sound", None, EntityCategory.DIAGNOSTIC),
+        LevelSenseStateBinarySensor(device, "Relay", "relay_state", None, "mdi:electric-switch", EntityCategory.DIAGNOSTIC),
+        LevelSenseStateBinarySensor(device, "Device Fault", "device_state", "problem", None, EntityCategory.DIAGNOSTIC),
+        LevelSenseStateBinarySensor(device, "Alarm Silenced", "alarm_silence", None, "mdi:bell-off", EntityCategory.DIAGNOSTIC),
     ])
 
 class LevelSenseBinarySensorBase(BinarySensorEntity):
     """Base class for Level Sense binary sensors."""
-    def __init__(self, device, name, key, dev_class=None, icon=None):
+    def __init__(self, device, name, key, dev_class=None, icon=None, category=None):
         self.device = device
         self._key = key
         self._attr_name = f"Level Sense {name}"
@@ -27,12 +28,18 @@ class LevelSenseBinarySensorBase(BinarySensorEntity):
         if icon:
             self._attr_icon = icon
         self._attr_device_info = {"identifiers": {(DOMAIN, "level_sense_pro_mac")}}
+        self._attr_entity_category = category
 
     async def async_added_to_hass(self):
         """Register callbacks when entity is added."""
         self.async_on_remove(
             async_dispatcher_connect(self.hass, SIGNAL_UPDATE, self.async_write_ha_state)
         )
+
+    @property
+    def available(self):
+        """Return True if the device is currently online."""
+        return self.device.is_online
 
 class LevelSenseInputBinarySensor(LevelSenseBinarySensorBase):
     """Evaluates arrays for analog inputs like the Leak and Float sensors."""

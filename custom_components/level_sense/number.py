@@ -1,4 +1,5 @@
 from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.const import EntityCategory
 from .const import DOMAIN, DATA_DEVICE
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -11,7 +12,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         LevelSenseRHThreshold(device, "RH Max Limit", "rh", 1, 0.0, 100.0),
         
         # New Interval Controls
-        LevelSenseInterval(device, "Update Interval", "update_interval", 10, 86400),
+        LevelSenseInterval(device, "Update Interval", "update_interval", 5, 3600),
         LevelSenseInterval(device, "Check-in Interval", "checkin_interval", 60, 86400),
     ])
 
@@ -27,6 +28,7 @@ class LevelSenseTempThreshold(NumberEntity):
         self._attr_native_unit_of_measurement = "°F"
         self._attr_mode = NumberMode.BOX
         self._attr_device_info = {"identifiers": {(DOMAIN, "level_sense_pro_mac")}}
+        self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def native_value(self):
@@ -44,6 +46,10 @@ class LevelSenseTempThreshold(NumberEntity):
         self.device.update_config(self._key, self._index, str(round(c_val_device, 2)))
         self.async_write_ha_state()
 
+    @property
+    def available(self):
+        return True
+
 class LevelSenseRHThreshold(NumberEntity):
     def __init__(self, device, name, key, index, min_v, max_v):
         self.device = device
@@ -56,6 +62,7 @@ class LevelSenseRHThreshold(NumberEntity):
         self._attr_native_unit_of_measurement = "%"
         self._attr_mode = NumberMode.BOX
         self._attr_device_info = {"identifiers": {(DOMAIN, "level_sense_pro_mac")}}
+        self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def native_value(self):
@@ -64,6 +71,11 @@ class LevelSenseRHThreshold(NumberEntity):
     async def async_set_native_value(self, value: float):
         self.device.update_config(self._key, self._index, str(round(value, 2)))
         self.async_write_ha_state()
+
+    @property
+    def available(self):
+        return True
+
 
 class LevelSenseInterval(NumberEntity):
     """Text box for single-value interval settings."""
@@ -77,6 +89,7 @@ class LevelSenseInterval(NumberEntity):
         self._attr_native_unit_of_measurement = "s"
         self._attr_mode = NumberMode.BOX
         self._attr_device_info = {"identifiers": {(DOMAIN, "level_sense_pro_mac")}}
+        self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def native_value(self):
@@ -86,3 +99,7 @@ class LevelSenseInterval(NumberEntity):
         # Convert back to a string without decimal points for the JSON payload
         self.device.update_config(self._key, None, str(int(value)))
         self.async_write_ha_state()
+
+    @property
+    def available(self):
+        return True

@@ -1,4 +1,5 @@
 from homeassistant.components.select import SelectEntity
+from homeassistant.const import EntityCategory
 from .const import DOMAIN, DATA_DEVICE
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -20,6 +21,7 @@ class LevelSenseConfigSelect(SelectEntity):
         self._attr_unique_id = f"ls_select_{key}_{index}"
         self._attr_options = ["On", "Off"]
         self._attr_device_info = {"identifiers": {(DOMAIN, "level_sense_pro_mac")}}
+        self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def current_option(self):
@@ -34,3 +36,7 @@ class LevelSenseConfigSelect(SelectEntity):
             
         self.device.update_config(self._key, self._index, val)
         self.async_write_ha_state()
+
+    @property
+    def available(self):
+        return True
