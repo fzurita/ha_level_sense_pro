@@ -84,7 +84,6 @@ class LevelSenseDevice:
         stored_config = await self._store.async_load()
         if stored_config:
             self.config = stored_config
-            _LOGGER.warning("Level Sense config successfully loaded from disk!")
         else:
             _LOGGER.warning("No saved Level Sense config found. Using defaults.")
 
